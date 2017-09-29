@@ -168,18 +168,25 @@ class FetchOperation<T: Resource>: ConcurrentOperation {
 class DeleteOperation: ConcurrentOperation {
 	/// The resource to delete.
 	let resource: Resource
+
+    let url: URL?
 	
 	/// The result of the operation. You can safely force unwrap this in the completionBlock.
 	var result: Failable<Void, SpineError>?
 	
-	init(resource: Resource, spine: Spine) {
+    init(resource: Resource, path: String?, spine: Spine) {
 		self.resource = resource
+        if path != nil {
+            self.url = URL(string: path!, relativeTo: spine.router.baseURL)
+        } else {
+            self.url = nil
+        }
 		super.init()
 		self.spine = spine
 	}
 	
 	override func execute() {
-		let URL = spine.router.urlForQuery(Query(resource: resource))
+		let URL = url ?? spine.router.urlForQuery(Query(resource: resource))
 		
 		Spine.logInfo(.spine, "Deleting resource \(resource) using URL: \(URL)")
 		
@@ -211,6 +218,8 @@ class DeleteOperation: ConcurrentOperation {
 class SaveOperation: ConcurrentOperation {
 	/// The resource to save.
 	let resource: Resource
+
+    let url: URL?
 	
 	/// The result of the operation. You can safely force unwrap this in the completionBlock.
 	var result: Failable<Void, SpineError>?
@@ -220,9 +229,14 @@ class SaveOperation: ConcurrentOperation {
 	
 	fileprivate let relationshipOperationQueue = OperationQueue()
 	
-	init(resource: Resource, spine: Spine) {
+    init(resource: Resource, path: String?, spine: Spine) {
 		self.resource = resource
 		self.isNewResource = (resource.id == nil)
+        if path != nil {
+            self.url = URL(string: path!, relativeTo: spine.router.baseURL)
+        } else {
+            self.url = nil
+        }
 		super.init()
 		self.spine = spine
 		self.relationshipOperationQueue.maxConcurrentOperationCount = 1
@@ -256,7 +270,7 @@ class SaveOperation: ConcurrentOperation {
 		let options: SerializationOptions
 		
 		if isNewResource {
-			url = router.urlForResourceType(resource.resourceType)
+			url = self.url ?? router.urlForResourceType(resource.resourceType)
 			method = "POST"
 			if let idGenerator = spine.idGenerator {
 				resource.id = idGenerator(resource)
@@ -265,7 +279,7 @@ class SaveOperation: ConcurrentOperation {
 				options = [.IncludeToOne, .IncludeToMany]
 			}
 		} else {
-			url = router.urlForQuery(Query(resource: resource))
+			url = self.url ?? router.urlForQuery(Query(resource: resource))
 			method = "PATCH"
 			options = [.IncludeID]
 		}
