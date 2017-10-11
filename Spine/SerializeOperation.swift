@@ -128,20 +128,13 @@ class SerializeOperation: Operation {
 	/// - parameter key:            The key to add to the serialized data.
 	/// - parameter type:           The resource type of the linked resource as defined on the parent resource.
 	fileprivate func addToOneRelationship(_ linkedResource: Resource?, to serializedData: inout [String: Any], key: String, type: ResourceType) {
-		let serializedId: Any
-		if let resourceId = linkedResource?.id {
-			serializedId = resourceId
-		} else {
-			serializedId = NSNull()
-		}
-		
-		let serializedRelationship = [
-			"data": [
-				"type": type,
-				"id": serializedId
-			]
-		]
-		
+        guard let linkedResource = linkedResource else {
+            return
+        }
+
+		let serializedRelationshipData = serializeResource(linkedResource)
+        let serializedRelationship = ["data": serializedRelationshipData]
+
 		if serializedData["relationships"] == nil {
 			serializedData["relationships"] = [key: serializedRelationship]
 		} else {
